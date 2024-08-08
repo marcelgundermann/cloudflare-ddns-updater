@@ -8,7 +8,6 @@ zone_identifier=""                                  # Can be found in the "Overv
 record_name=""                                      # Which record you want to be synced
 ttl=3600                                            # Set the DNS TTL (seconds)
 proxy="false"                                       # Set the proxy to true or false
-sitename=""                                         # Title of site "Example Site"
 
 
 ###########################################
@@ -31,13 +30,9 @@ if [[ ! $ip =~ ^$ipv4_regex$ ]]; then
 fi
 
 ###########################################
-## Check and set the proper auth header
+## Set the proper auth header
 ###########################################
-if [[ "${auth_method}" == "global" ]]; then
-  auth_header="X-Auth-Key:"
-else
-  auth_header="Authorization: Bearer"
-fi
+auth_header="Authorization: Bearer"
 
 ###########################################
 ## Seek for the A record
