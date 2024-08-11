@@ -1,14 +1,4 @@
 #!/bin/bash
-## change to "bin/sh" when necessary
-
-auth_email=""                                       # The email used to login 'https://dash.cloudflare.com'
-auth_method="token"                                 # Set to "global" for Global API Key or "token" for Scoped API Token
-auth_key=""                                         # Your API Token or Global API Key
-zone_identifier=""                                  # Can be found in the "Overview" tab of your domain
-record_name=""                                      # Which record you want to be synced
-ttl=3600                                            # Set the DNS TTL (seconds)
-proxy="false"                                       # Set the proxy to true or false
-
 
 ###########################################
 ## Check if we have a public IP
@@ -20,7 +10,7 @@ if [[ ! $ret == 0 ]]; then # In the case that cloudflare failed to return an ip.
     ip=$(curl -s https://api.ipify.org || curl -s https://ipv4.icanhazip.com)
 else
     # Extract just the ip from the ip line from cloudflare.
-    ip=$(echo $ip | sed -E "s/^ip=($ipv4_regex)$/\1/")
+    ip=$(echo "$ip" | sed -E "s/^ip=($ipv4_regex)$/\1/")
 fi
 
 # Use regex to check for proper IPv4 format.
@@ -39,16 +29,15 @@ auth_header="Authorization: Bearer"
 ###########################################
 
 logger "DDNS Updater: Check Initiated"
-record=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zone_identifier/dns_records?type=A&name=$record_name" \
-                      -H "X-Auth-Email: $auth_email" \
-                      -H "$auth_header $auth_key" \
+record=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_IDENTIFIER/dns_records?type=A&name=$CF_RECORD_NAME" \
+                      -H "$auth_header $CF_AUTH_KEY" \
                       -H "Content-Type: application/json")
 
 ###########################################
 ## Check if the domain has an A record
 ###########################################
 if [[ $record == *"\"count\":0"* ]]; then
-  logger -s "DDNS Updater: Record does not exist, perhaps create one first? (${ip} for ${record_name})"
+  logger -s "DDNS Updater: Record does not exist, perhaps create one first? (${ip} for ${CF_RECORD_NAME})"
   exit 1
 fi
 
@@ -58,7 +47,7 @@ fi
 old_ip=$(echo "$record" | sed -E 's/.*"content":"(([0-9]{1,3}\.){3}[0-9]{1,3})".*/\1/')
 # Compare if they're the same
 if [[ $ip == $old_ip ]]; then
-  logger "DDNS Updater: IP ($ip) for ${record_name} has not changed."
+  logger "DDNS Updater: IP ($ip) for ${CF_RECORD_NAME} has not changed."
   exit 0
 fi
 
@@ -70,9 +59,8 @@ record_identifier=$(echo "$record" | sed -E 's/.*"id":"([A-Za-z0-9_]+)".*/\1/')
 ###########################################
 ## Change the IP@Cloudflare using the API
 ###########################################
-update=$(curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$zone_identifier/dns_records/$record_identifier" \
-                     -H "X-Auth-Email: $auth_email" \
-                     -H "$auth_header $auth_key" \
+curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_IDENTIFIER/dns_records/$record_identifier" \
+                     -H "$auth_header $CF_AUTH_KEY" \
                      -H "Content-Type: application/json" \
-                     --data "{\"type\":\"A\",\"name\":\"$record_name\",\"content\":\"$ip\",\"ttl\":$ttl,\"proxied\":${proxy}}")
+                     --data "{\"type\":\"A\",\"name\":\"$CF_RECORD_NAME\",\"content\":\"$ip\",\"ttl\":$CF_TTL,\"proxied\":$CF_PROXY}"
                      
